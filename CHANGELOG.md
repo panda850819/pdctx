@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.0.2 — 2026-04-30 (overlay merging)
+
+First v0.5 batch. Closes the `personal-trader.toml` leak surfaced by the visibility scanner on ship day.
+
+### Added
+
+- Context overlays. Any `.toml` under a source's `contexts/` dir with an `[overlay]` block (`extends = "<base-name>"`) is treated as an overlay rather than a base. Loader does a two-pass merge: bases first (one base per name; collision = warning), then overlays applied in deterministic path order.
+- Merge semantics: array fields concat with dedup (`skills.public`, `skills.private`, `flow.side`, `memory.firewall_from`), scalar fields override only when present in overlay, `sources` merges shallowly, `notes` is replaced.
+- `validateOverlay()` in `src/schema/context.ts`, returns `ContextOverlay`. `parse(path)` now returns `ParsedContextFile` (`{kind: "base" | "overlay", def, path}`).
+- `applyOverlay(base, overlay)` in `src/engine/context.ts`, exported for testing.
+- `LoadResult.overlays_applied: { extends, path }[]` — surfaces which overlays merged in.
+- `bun test` script + `src/engine/context.test.ts` (5 tests, locks merge contract).
+
+### Changed
+
+- `pandastack/plugins/pandastack/contexts/personal-trader.toml`: removed `pandastack-private:chain-scout` reference, flipped `private = false`. Public base now contains research/framing skills only.
+- New `pandastack-private/contexts/personal-trader.overlay.toml`: extends `personal:trader`, adds `chain-scout` to `skills.private`, flips `private = true` on merge.
+
+### Verified
+
+- `pdctx use personal:trader` → `~/.claude/state/pdctx-active.json` shows merged `skills.private = ["pandastack-private:chain-scout"]`.
+- `pdctx publish-check --path ~/site/skills/pandastack` clean — 147 files scanned, 0 violations. `pandastack-private:` strings no longer appear in any public file.
+
+### Bundled in pandastack / pandastack-private
+
+Closing the visibility scanner cleanly required a parallel split of human-facing index files:
+
+- `pandastack/RESOLVER.md`: removed Trading + Sommet sections, removed `misalignment` / `yei-alert-triage` rows from Work execution, replaced the "Private contexts may reference `pandastack-private:*`" line with neutral wording. Added a `## Private supplement` pointer.
+- `pandastack/plugins/pandastack/.codex/INSTALL.md`: removed `chain-scout` bare name from the local-CLI-bound list.
+- New `pandastack-private/RESOLVER.md`: 8 private skills indexed (work execution / trading / sommet) with the same table format. Cross-references the public RESOLVER as the source of system shape.
+
+Rule established: `pandastack-private:*` strings (and bare names of private skills) do not appear in the public repo. The visibility scanner stays an absolute gate, no allowlist mechanism needed.
+
+---
+
 ## v0.0.1 — 2026-04-30 (functional)
 
 First functional cut. Subagent-driven build session, 13 tasks across 6 phases, ~3 hours wall clock.
