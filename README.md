@@ -2,7 +2,7 @@
 
 > Personal context-aware AI operator OS — declare your contexts once, switch instantly, AI runtimes follow.
 
-**Status**: v0 functional (2026-04-30) — `use` / `call` / `distill` / `status` / `doctor` / `init` / `publish-check` all wired against Claude Code + Codex CLI. Memory chmod firewall + JSONL audit log live. Author dogfood window active. Not stable yet.
+**Status**: v0.5 in progress (2026-04-30) — `use` / `call` / `distill` / `query` / `search` / `vsearch` / `status` / `doctor` / `init` / `publish-check` / `offboard` wired against Claude Code + Codex CLI. Memory chmod firewall + knowledge source firewall + JSONL audit log live. Author dogfood window active. Not stable yet.
 
 ## Quick start
 
@@ -14,8 +14,11 @@ pdctx init                        # bootstraps ~/.pdctx/
 pdctx doctor                      # all green if Claude Code + Codex CLI installed
 pdctx use personal:writer         # wear a context (8 ship with pandastack)
 pdctx call personal:writer "..."  # delegate (foreground stream)
+pdctx query "naval"               # qmd hybrid search filtered by active context
+pdctx search "ops" -c work-vault  # rejected if work-vault is forbidden in active context
 pdctx distill --from work:yei:ops --to personal:knowledge-manager \
   --source <path> --target <path> --topic "..." --dry-run
+pdctx offboard personal:trader --dry-run  # archive memory, restore chmod
 ```
 
 `pdctx use` writes runtime state to `~/.claude/state/pdctx-active.json` and `~/.codex/state/pdctx-active.json`. Future Claude Code / Codex hooks read these to filter visible skills (out of scope for v0).
@@ -58,9 +61,12 @@ Contexts = your specialized teams (Ops / Writing / Trading / ...)
 
 | Version | Scope | Status |
 |---|---|---|
-| v0 | Context engine, sync to Claude/Codex, chmod firewall, distill, audit, publish-check | functional 2026-04-30, dogfooding |
-| v0.5 | Knowledge source firewall (qmd wrap), `BridgeAdapter` interface, 6 reference adapters, `onboard` flow, overlay merging for context.toml | planned |
-| v1 | Clean offboarding ritual, Hermes/Gemini runtime loaders, alpha testers | planned |
+| v0 | Context engine, sync to Claude/Codex, chmod firewall, distill, audit, publish-check | functional 2026-04-30 |
+| v0.5 batch 1 | Overlay merging for context.toml | shipped 2026-04-30 (v0.0.2) |
+| v0.5 batch 2 | Clean offboarding ritual | shipped 2026-04-30 (v0.0.3) |
+| v0.5 batch 3 | Knowledge source firewall (qmd wrap, allow/forbid per context) | shipped 2026-04-30 (v0.0.4) |
+| v0.5 batch 4 | `BridgeAdapter` interface + qmd / notion reference adapters | planned |
+| v1 | Hermes/Gemini runtime loaders, alpha testers | planned |
 
 ## Related repos
 

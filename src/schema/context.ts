@@ -8,6 +8,7 @@ export interface ContextDef {
   skills: { public: string[]; private: string[] };
   memory: { namespace: string; firewall_from: string[] };
   sources: { vault?: string; notion_workspace?: string; linear_team?: string };
+  knowledge?: { allow: string[]; forbid: string[] };
   notes?: string;
 }
 
@@ -19,6 +20,7 @@ export interface ContextOverlay {
   skills?: { public?: string[]; private?: string[] };
   memory?: { namespace?: string; firewall_from?: string[] };
   sources?: ContextDef["sources"];
+  knowledge?: { allow?: string[]; forbid?: string[] };
   notes?: string;
 }
 
@@ -70,6 +72,7 @@ export function validate(raw: unknown, path = "<unknown>"): ContextDef {
   const s = obj(path, "skills", o["skills"]);
   const m = obj(path, "memory", o["memory"]);
   const sr = o["sources"] !== undefined ? obj(path, "sources", o["sources"]) : ({} as Record<string, unknown>);
+  const kn = o["knowledge"] !== undefined ? obj(path, "knowledge", o["knowledge"]) : undefined;
   const notes = o["notes"];
 
   return {
@@ -100,6 +103,14 @@ export function validate(raw: unknown, path = "<unknown>"): ContextDef {
       ...(sr["notion_workspace"] !== undefined ? { notion_workspace: str(path, "sources.notion_workspace", sr["notion_workspace"]) } : {}),
       ...(sr["linear_team"] !== undefined ? { linear_team: str(path, "sources.linear_team", sr["linear_team"]) } : {}),
     },
+    ...(kn !== undefined
+      ? {
+          knowledge: {
+            allow: arr(path, "knowledge.allow", kn["allow"] ?? []),
+            forbid: arr(path, "knowledge.forbid", kn["forbid"] ?? []),
+          },
+        }
+      : {}),
     ...(notes !== undefined && typeof notes !== "object" ? { notes: String(notes) } : {}),
   };
 }
@@ -175,6 +186,16 @@ export function validateOverlay(raw: unknown, path = "<unknown>"): ContextOverla
     const lt = strOpt(path, "sources.linear_team", sr["linear_team"]);
     if (lt !== undefined) partial.linear_team = lt;
     if (Object.keys(partial).length > 0) out.sources = partial;
+  }
+
+  if (o["knowledge"] !== undefined) {
+    const kn = obj(path, "knowledge", o["knowledge"]);
+    const partial: { allow?: string[]; forbid?: string[] } = {};
+    const allow = arrOpt(path, "knowledge.allow", kn["allow"]);
+    if (allow !== undefined) partial.allow = allow;
+    const forbid = arrOpt(path, "knowledge.forbid", kn["forbid"]);
+    if (forbid !== undefined) partial.forbid = forbid;
+    if (Object.keys(partial).length > 0) out.knowledge = partial;
   }
 
   if (o["notes"] !== undefined && typeof o["notes"] !== "object") {

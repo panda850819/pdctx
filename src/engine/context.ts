@@ -29,6 +29,14 @@ function dedupConcat(a: string[], b: string[] | undefined): string[] {
 }
 
 export function applyOverlay(base: ContextDef, overlay: ContextOverlay): ContextDef {
+  const mergedKnowledge =
+    overlay.knowledge !== undefined
+      ? {
+          allow: dedupConcat(base.knowledge?.allow ?? [], overlay.knowledge.allow),
+          forbid: dedupConcat(base.knowledge?.forbid ?? [], overlay.knowledge.forbid),
+        }
+      : base.knowledge;
+
   return {
     context: { ...base.context, ...(overlay.context ?? {}) },
     persona: { ...base.persona, ...(overlay.persona ?? {}) },
@@ -45,6 +53,7 @@ export function applyOverlay(base: ContextDef, overlay: ContextOverlay): Context
       firewall_from: dedupConcat(base.memory.firewall_from, overlay.memory?.firewall_from),
     },
     sources: { ...base.sources, ...(overlay.sources ?? {}) },
+    ...(mergedKnowledge !== undefined ? { knowledge: mergedKnowledge } : {}),
     ...(overlay.notes !== undefined
       ? { notes: overlay.notes }
       : base.notes !== undefined

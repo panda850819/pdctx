@@ -8,13 +8,14 @@ import { runInit } from "./commands/init.ts";
 import { runPublishCheck } from "./commands/publish-check.ts";
 import { runDistill } from "./commands/distill.ts";
 import { runOffboard } from "./commands/offboard.ts";
+import { runQuery } from "./commands/query.ts";
 
 const program = new Command();
 
 program
   .name("pdctx")
   .description("Personal context-aware AI operator OS — declare contexts once, AI runtimes follow.")
-  .version("0.0.3");
+  .version("0.0.4");
 
 program
   .command("use <context>")
@@ -65,6 +66,21 @@ program
   .option("--dry-run", "preview only, no write", false)
   .option("--force", "overwrite existing target", false)
   .action((opts) => runDistill(opts));
+
+for (const subcmd of ["query", "search", "vsearch"] as const) {
+  program
+    .command(`${subcmd} <text>`)
+    .description(
+      subcmd === "query"
+        ? "Hybrid qmd search filtered by active context's knowledge.allow/forbid."
+        : subcmd === "search"
+          ? "BM25 qmd search filtered by active context's knowledge.allow/forbid."
+          : "Vector qmd search filtered by active context's knowledge.allow/forbid.",
+    )
+    .option("-c, --collection <name>", "filter to a specific qmd collection (rejected if forbidden)")
+    .option("-n, --limit <n>", "max results")
+    .action((text, opts) => runQuery(subcmd, text, opts));
+}
 
 program
   .command("offboard <context>")

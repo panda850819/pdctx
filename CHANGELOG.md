@@ -1,5 +1,53 @@
 # Changelog
 
+## v0.0.4 — 2026-04-30 (knowledge source firewall)
+
+Third v0.5 batch. Layer 4 of the 4-layer firewall: `pdctx query/search/vsearch` wrap qmd with active-context allow/forbid enforcement. Forbidden collections are rejected outright; bare queries auto-expand to the allowed list.
+
+### Added
+
+- `[knowledge]` block in context.toml schema. Two array fields:
+  - `allow` — qmd collection names auto-expanded to when no `-c` is passed
+  - `forbid` — qmd collection names always rejected even if user passes `-c <forbidden>`
+- `pdctx query <text>`, `pdctx search <text>`, `pdctx vsearch <text>` commands. Wrap qmd's hybrid / BM25 / vector search respectively. Inherit qmd's `-c <collection>` and `-n <limit>` flags but enforce the active context's firewall first.
+- `planQueryArgs(input)` pure function in `src/engine/knowledge.ts`. Returns `{ action: "allow" | "filter" | "reject", collections, reason }`. Exported for testing.
+- `AuditEvent` extended with `"query"`. Every `pdctx query/search/vsearch` invocation writes an audit entry with subcommand, query, action, and reason.
+- 6 unit tests over `planQueryArgs()` covering: no-active-context pass-through, no-`[knowledge]`-section pass-through, `-c` forbidden rejection, `-c` allowed pass-through, no-`-c` filter expansion, forbid-takes-precedence on conflict.
+
+### Changed
+
+- 8 context.toml files in pandastack + pandastack-private declare `[knowledge]` block:
+  - 4 personal contexts: `allow = ["knowledge", "blog", "lennys", "sessions"]`, `forbid = ["work-vault"]`
+  - 4 work contexts: `allow = ["work-vault"]`, `forbid = ["knowledge", "blog", "lennys", "sessions"]`
+- Context overlay merge in `applyOverlay()` extended to merge `knowledge` block (allow/forbid use dedup-concat, mirroring skills/firewall_from semantics).
+
+### Behavior
+
+- No active context, or context without `[knowledge]` block → pass-through unchanged.
+- `-c <forbidden>` → exit 1 with `pdctx: rejected — collection "X" forbidden in context "Y"`.
+- `-c <allowed>` → invoke qmd once with that collection.
+- No `-c`, allow list non-empty → invoke qmd N times, one per allowed collection, with `--- <name> ---` separator on stderr.
+- No `-c`, allow list empty → pass-through (forbid not enforceable without explicit `-c`).
+- Audit entry: `{ event: "query", context, payload: { subcmd, query, user_collection, action, collections, reason } }`.
+
+### Verified
+
+- 4 manual smokes:
+  - `personal:writer` + `-c work-vault` → reject
+  - `personal:writer` + `-c knowledge` → results from knowledge collection only
+  - `work:yei:ops` + `-c knowledge` → reject
+  - `personal:writer` no `-c` → 4-collection auto-expand with per-collection results
+- `bun test` 17/17 pass (5 overlay + 6 offboard + 6 knowledge).
+- `~/.config/qmd/index.yml` extended with `work-vault` collection (143 docs indexed).
+
+### Out of scope (deferred)
+
+- PATH shim that aliases bare `qmd` to `pdctx query` (defer; risk breaking direct qmd usage).
+- Native `--respect-context` flag in qmd itself (defer; pdctx wrap is the cleaner separation).
+- Slack / Notion / Linear source firewall (waits for BridgeAdapter in Batch 4).
+
+---
+
 ## v0.0.3 — 2026-04-30 (offboarding ritual)
 
 Second v0.5 batch. Adds `pdctx offboard <context>` so a context can leave cleanly: memory archived (or purged), chmod restored, runtime state cleared if active, audit log entry written.
