@@ -1,0 +1,38 @@
+{
+  "name": "pdctx",
+  "version": "0.0.1",
+  "description": "Personal context-aware AI operator OS — declare your contexts once, switch instantly, AI runtimes follow.",
+  "type": "module",
+  "bin": {
+    "pdctx": "./src/cli.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "^13.1.0",
+    "smol-toml": "^1.3.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "bun": ">=1.3.0"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/panda850819/pdctx",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/panda850819/pdctx.git"
+  },
+  "keywords": [
+    "cli",
+    "ai",
+    "operator-os",
+    "context",
+    "claude-code",
+    "codex"
+  ]
+}

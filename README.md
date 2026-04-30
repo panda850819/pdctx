@@ -2,7 +2,23 @@
 
 > Personal context-aware AI operator OS — declare your contexts once, switch instantly, AI runtimes follow.
 
-**Status**: in development (v0 design phase, 2026-04-29)
+**Status**: v0 functional (2026-04-30) — `use` / `call` / `distill` / `status` / `doctor` / `init` / `publish-check` all wired against Claude Code + Codex CLI. Memory chmod firewall + JSONL audit log live. Author dogfood window active. Not stable yet.
+
+## Quick start
+
+```bash
+git clone https://github.com/panda850819/pdctx
+cd pdctx && bun install
+bun link
+pdctx init                        # bootstraps ~/.pdctx/
+pdctx doctor                      # all green if Claude Code + Codex CLI installed
+pdctx use personal:writer         # wear a context (8 ship with pandastack)
+pdctx call personal:writer "..."  # delegate (foreground stream)
+pdctx distill --from work:yei:ops --to personal:knowledge-manager \
+  --source <path> --target <path> --topic "..." --dry-run
+```
+
+`pdctx use` writes runtime state to `~/.claude/state/pdctx-active.json` and `~/.codex/state/pdctx-active.json`. Future Claude Code / Codex hooks read these to filter visible skills (out of scope for v0).
 
 ## Why
 
@@ -40,11 +56,11 @@ Contexts = your specialized teams (Ops / Writing / Trading / ...)
 
 ## Roadmap
 
-| Version | Scope | ETA |
+| Version | Scope | Status |
 |---|---|---|
-| v0 | Context engine, sync to Claude/Codex, isolation, distill, audit | 4 weeks |
-| v0.5 | Source adapters (vault, Notion, Slack, GitHub, MCP), `onboard` flow | +3 weeks |
-| v1 | Clean offboarding ritual, Hermes/Gemini support, alpha testers | +1-4 weeks |
+| v0 | Context engine, sync to Claude/Codex, chmod firewall, distill, audit, publish-check | functional 2026-04-30, dogfooding |
+| v0.5 | Knowledge source firewall (qmd wrap), `BridgeAdapter` interface, 6 reference adapters, `onboard` flow, overlay merging for context.toml | planned |
+| v1 | Clean offboarding ritual, Hermes/Gemini runtime loaders, alpha testers | planned |
 
 ## Related repos
 
