@@ -68,4 +68,26 @@ describe("applyOverlay", () => {
     const merged = applyOverlay(baseWithNotes, overlay);
     expect(merged.notes).toBe("overlay notes");
   });
+
+  test("mcp.deny merges with dedup-concat", () => {
+    const baseWithMcp: ContextDef = {
+      ...baseTrader,
+      mcp: { deny: ["mcp__claude_ai_Linear__*"] },
+    };
+    const overlay: ContextOverlay = {
+      extends: "personal:trader",
+      mcp: { deny: ["mcp__claude_ai_Linear__*", "mcp__slack_yei__*"] },
+    };
+    const merged = applyOverlay(baseWithMcp, overlay);
+    expect(merged.mcp?.deny).toEqual(["mcp__claude_ai_Linear__*", "mcp__slack_yei__*"]);
+  });
+
+  test("mcp overlay added when base has no [mcp]", () => {
+    const overlay: ContextOverlay = {
+      extends: "personal:trader",
+      mcp: { deny: ["mcp__claude_ai_Linear__*"] },
+    };
+    const merged = applyOverlay(baseTrader, overlay);
+    expect(merged.mcp?.deny).toEqual(["mcp__claude_ai_Linear__*"]);
+  });
 });

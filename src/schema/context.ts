@@ -9,6 +9,7 @@ export interface ContextDef {
   memory: { namespace: string; firewall_from: string[] };
   sources: { vault?: string; notion_workspace?: string; linear_team?: string };
   knowledge?: { allow: string[]; forbid: string[] };
+  mcp?: { deny: string[] };
   notes?: string;
 }
 
@@ -21,6 +22,7 @@ export interface ContextOverlay {
   memory?: { namespace?: string; firewall_from?: string[] };
   sources?: ContextDef["sources"];
   knowledge?: { allow?: string[]; forbid?: string[] };
+  mcp?: { deny?: string[] };
   notes?: string;
 }
 
@@ -73,6 +75,7 @@ export function validate(raw: unknown, path = "<unknown>"): ContextDef {
   const m = obj(path, "memory", o["memory"]);
   const sr = o["sources"] !== undefined ? obj(path, "sources", o["sources"]) : ({} as Record<string, unknown>);
   const kn = o["knowledge"] !== undefined ? obj(path, "knowledge", o["knowledge"]) : undefined;
+  const mc = o["mcp"] !== undefined ? obj(path, "mcp", o["mcp"]) : undefined;
   const notes = o["notes"];
 
   return {
@@ -108,6 +111,13 @@ export function validate(raw: unknown, path = "<unknown>"): ContextDef {
           knowledge: {
             allow: arr(path, "knowledge.allow", kn["allow"] ?? []),
             forbid: arr(path, "knowledge.forbid", kn["forbid"] ?? []),
+          },
+        }
+      : {}),
+    ...(mc !== undefined
+      ? {
+          mcp: {
+            deny: arr(path, "mcp.deny", mc["deny"] ?? []),
           },
         }
       : {}),
@@ -196,6 +206,14 @@ export function validateOverlay(raw: unknown, path = "<unknown>"): ContextOverla
     const forbid = arrOpt(path, "knowledge.forbid", kn["forbid"]);
     if (forbid !== undefined) partial.forbid = forbid;
     if (Object.keys(partial).length > 0) out.knowledge = partial;
+  }
+
+  if (o["mcp"] !== undefined) {
+    const mc = obj(path, "mcp", o["mcp"]);
+    const partial: { deny?: string[] } = {};
+    const deny = arrOpt(path, "mcp.deny", mc["deny"]);
+    if (deny !== undefined) partial.deny = deny;
+    if (Object.keys(partial).length > 0) out.mcp = partial;
   }
 
   if (o["notes"] !== undefined && typeof o["notes"] !== "object") {

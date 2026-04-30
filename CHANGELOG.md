@@ -1,5 +1,70 @@
 # Changelog
 
+## v0.0.6 — 2026-04-30 (MCP allowlist firewall)
+
+Fifth v0.5 batch. Layer 5 firewall for MCP tools: `[mcp].deny` block in context.toml lists tool-name glob patterns; pdctx publishes them to `~/.claude/state/pdctx-active.json` and `~/.codex/state/pdctx-active.json`; a Claude Code PreToolUse hook reads the state and blocks matching MCP tool calls. Hook-based runtime enforcement, not config mutation — see "Design rationale" below.
+
+### Added
+
+- `[mcp]` block in context.toml schema. Single field `deny: string[]` of tool-name glob patterns (`*` = any, `?` = single char). No allow list, no read/write classifier — v0 is denylist only by deliberate scope cut.
+- `planMcpCall(input)` pure function in `src/engine/mcp.ts`. Returns `{ action: "allow" | "deny", reason, matched_pattern? }`. Exported for testing. First matching pattern wins.
+- `matchGlob(pattern, name)` glob matcher in `src/engine/mcp.ts`. Translates `*` → `.*`, `?` → `.`, escapes regex specials. Anchored full match (`^...$`).
+- `~/.claude/hooks/pre-tool-use/pdctx-mcp-firewall.sh` PreToolUse hook script. Reads `~/.claude/state/pdctx-active.json`, glob-matches `tool_name` against `mcp_deny`, emits `permissionDecision: "deny"` on hit. Exits 0 silently for non-MCP calls (early exit on `tool_name == mcp__*` check). Wired into `~/.claude/settings.json` PreToolUse with matcher `mcp__.*`.
+- 11 unit tests over `planMcpCall()` + `matchGlob()` covering: no-context pass-through, no-`[mcp]` pass-through, empty-deny pass-through, glob match, no match, multi-pattern first-wins, exact match, trailing wildcard, `?` single-char, regex specials in tool names, anchored match.
+
+### Changed
+
+- 8 context.toml files declare `[mcp].deny`:
+  - 4 personal contexts (`personal-writer/trader/developer/knowledge-manager`): deny `mcp__claude_ai_Linear__*` (Sommet ticketing) + `mcp__claude_ai_Atlassian__*` (Yei Jira).
+  - 3 work-yei contexts (`work-yei-ops/hr/finance`): deny `mcp__claude_ai_Linear__*` (Sommet's tool, different team).
+  - 1 work-sommet context (`work-sommet-abyss-po`): deny `mcp__claude_ai_Atlassian__*` (Yei's tool, different team).
+- Context overlay merge in `applyOverlay()` extended to merge `mcp` block (deny uses dedup-concat, mirroring `knowledge.allow/forbid` and `memory.firewall_from`).
+- Both runtime loaders (`claude.ts`, `codex.ts`) include `mcp_deny: context.mcp?.deny ?? []` in the JSON payload.
+
+### Behavior
+
+- No active context, or context without `[mcp]` block → hook silent pass-through (allow).
+- `tool_name` not starting with `mcp__` → hook early-exit, no firewall logic runs.
+- `tool_name` matching any deny glob pattern → hook emits PreToolUse deny JSON; Claude Code blocks the call and surfaces `permissionDecisionReason` to the LLM.
+- Cross-context behavior: `pdctx use <ctx>` re-publishes state file. New tool calls in the same Claude Code session pick up new firewall (hook re-reads state file each time).
+- Codex side: `mcp_deny` is written to `~/.codex/state/pdctx-active.json` for symmetry, but Codex CLI 0.124.0 does not yet expose a PreToolUse-equivalent hook event (only SessionStart / Stop / UserPromptSubmit). Enforcement on Codex side is deferred until upstream support lands. Schema is forward-compatible — only the hook script needs writing.
+
+### Verified
+
+- `bun test` 36/36 pass (5 overlay + 6 offboard + 6 knowledge + 6 qmd adapter + 11 mcp + 2 mcp overlay merge).
+- `tsc --noEmit` clean.
+- Manual smokes (with `pdctx use personal:writer` then `work:yei:ops`):
+  - personal:writer + `mcp__claude_ai_Linear__list_issues` → hook emits deny JSON
+  - personal:writer + `mcp__claude_ai_qmd__hybrid` → hook silent pass-through
+  - personal:writer + non-MCP tool (e.g. `Bash`) → hook early-exits, no overhead
+  - work:yei:ops + `mcp__claude_ai_Atlassian__list_issues` → hook silent pass-through (Yei uses Atlassian)
+  - work:yei:ops + `mcp__claude_ai_Linear__list_issues` → hook emits deny JSON (Linear is Sommet's, not Yei's)
+
+### Out of scope (deferred per grill 2026-04-30)
+
+- **Allow-list / read-write classifier** (originally B2 in grill): only adds value if Panda needs intra-context tool-class gates (preventing personal:writer from accidentally invoking destructive personal tools). Deferred until `mcp_deny`-only proves insufficient after a week of use.
+- **Usage log** (`~/.pdctx/usage/<context>.jsonl` of all MCP tool calls): valuable for retro ("did I use any work tool from a personal context this week?") but adds write surface and disk churn. Deferred until v0.0.6 dogfood reveals retro need.
+- **JIT `/pdctx allow <tool>` slash command**: in-flow allowlist editing. Deferred — current denylist is short and edit-by-hand is fine at this scale.
+- **Haiku per-call read/write judge**: latency cost on agentic loops too high; permanently parked.
+- **Codex PreToolUse hook script**: blocked on upstream Codex CLI hook event support. Schema and state file already carry `mcp_deny`.
+- **`pdctx wire-hook` install command**: hook script is currently placed at `~/.claude/hooks/pre-tool-use/pdctx-mcp-firewall.sh` and wired into settings.json by hand. Auto-install via `pdctx init` or `pdctx wire` is a v0.5+ ergonomic improvement.
+
+### Design rationale (grill 2026-04-30)
+
+The original Layer 5 plan (v0.0.5 changelog) framed Batch 5 as "runtime mcp config writer" — i.e. mutating `~/.claude/settings.json` mcpServers section per active context. A grill session on 2026-04-30 (`Inbox/grill-pdctx-batch-5-mcp-allowlist-2026-04-30.md` in the personal vault) reframed three structural questions:
+
+1. **Enforcement layer**: runtime hook (this implementation) instead of config mutation. Reasons: doesn't break manual `claude mcp add`; doesn't fight user-edited settings.json; supports `/pdctx use <ctx>` mid-session hot-swap (next session's tool calls pick up new firewall, no restart).
+2. **Curation strategy**: predeclared denylist instead of JIT learning. Reasons: with Yei (Atlassian) and Sommet (Linear) being the only structural cross-team boundaries, the deny list is 1-2 entries per context — hand-maintained is fine. JIT learning is overhead without clear payoff at this scale.
+3. **Failure semantics**: deny-on-match is the only mode; no fail-open + log, no read/write classifier. The user's stated concern was "don't let personal context touch work systems" — denylist solves that. Read/write classifier and JIT are layered designs that earn their keep only after v0 proves insufficient.
+
+The grill log records the full reasoning trail and lists explicit triggers for when to add the deferred features. This batch implements **only what the stated concern requires**, no more.
+
+### MCP loading clarification
+
+A reality check surfaced during the grill: in current Claude Code, MCP server **subprocesses** spawn eagerly at session start (the runtime needs them up to enumerate tool names). What can be filtered is the **LLM's view of available tools** — schemas are deferred via ToolSearch, and PreToolUse hooks can block calls. So the firewall does not reduce subprocess footprint — it bounds what the LLM is permitted to call. This is fine for the cross-team contamination use case, which is about boundary enforcement, not resource reduction.
+
+---
+
 ## v0.0.5 — 2026-04-30 (BridgeAdapter)
 
 Fourth v0.5 batch. Refactors v0.0.4's inline `qmd` spawn into a `BridgeAdapter` interface + a single reference adapter (`QmdBridgeAdapter`). The interface is the contract for **CLI-style local sources** (qmd today; potentially other local CLI tools later). External services (Notion / Linear / Slack / GitHub) will NOT use BridgeAdapter — they go through MCP allowlist instead (see "Layer 5 architecture correction" below).

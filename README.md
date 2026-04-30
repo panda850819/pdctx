@@ -2,7 +2,7 @@
 
 > Personal context-aware AI operator OS — declare your contexts once, switch instantly, AI runtimes follow.
 
-**Status**: v0.5 in progress (2026-04-30) — `use` / `call` / `distill` / `query` / `search` / `vsearch` / `status` / `doctor` / `init` / `publish-check` / `offboard` wired against Claude Code + Codex CLI. Memory chmod firewall + knowledge source firewall + JSONL audit log live. Author dogfood window active. Not stable yet.
+**Status**: v0.5 in progress (2026-04-30) — `use` / `call` / `distill` / `query` / `search` / `vsearch` / `status` / `doctor` / `init` / `publish-check` / `offboard` wired against Claude Code + Codex CLI. Memory chmod firewall + knowledge source firewall + MCP tool firewall (Claude PreToolUse hook) + JSONL audit log live. Author dogfood window active. Not stable yet.
 
 ## Quick start
 
@@ -68,7 +68,7 @@ Contexts = your specialized teams (Ops / Writing / Trading / ...)
 | v0.5 batch 2 | Clean offboarding ritual | shipped 2026-04-30 (v0.0.3) |
 | v0.5 batch 3 | Knowledge source firewall (qmd wrap, allow/forbid per context) | shipped 2026-04-30 (v0.0.4) |
 | v0.5 batch 4 | `BridgeAdapter` interface + `QmdBridgeAdapter` reference + registry | shipped 2026-04-30 (v0.0.5) |
-| v0.5 batch 5 | MCP allowlist: `[mcp]` block in context.toml + runtime mcp config writer + Notion/Linear/Slack MCP integration | planned |
+| v0.5 batch 5 | MCP tool firewall: `[mcp].deny` block + PreToolUse hook (Claude side; Codex deferred upstream) | shipped 2026-04-30 (v0.0.6) |
 | v1 | Hermes/Gemini runtime loaders, alpha testers | planned |
 
 ## Related repos

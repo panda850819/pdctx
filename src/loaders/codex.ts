@@ -30,6 +30,7 @@ export function apply(context: ContextDef): ApplyResult {
     memory_namespace: context.memory.namespace,
     firewall_from: context.memory.firewall_from,
     sources: context.sources,
+    mcp_deny: context.mcp?.deny ?? [],
     applied_at,
     applied_by: "pdctx",
   };

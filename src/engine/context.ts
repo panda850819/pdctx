@@ -37,6 +37,13 @@ export function applyOverlay(base: ContextDef, overlay: ContextOverlay): Context
         }
       : base.knowledge;
 
+  const mergedMcp =
+    overlay.mcp !== undefined
+      ? {
+          deny: dedupConcat(base.mcp?.deny ?? [], overlay.mcp.deny),
+        }
+      : base.mcp;
+
   return {
     context: { ...base.context, ...(overlay.context ?? {}) },
     persona: { ...base.persona, ...(overlay.persona ?? {}) },
@@ -54,6 +61,7 @@ export function applyOverlay(base: ContextDef, overlay: ContextOverlay): Context
     },
     sources: { ...base.sources, ...(overlay.sources ?? {}) },
     ...(mergedKnowledge !== undefined ? { knowledge: mergedKnowledge } : {}),
+    ...(mergedMcp !== undefined ? { mcp: mergedMcp } : {}),
     ...(overlay.notes !== undefined
       ? { notes: overlay.notes }
       : base.notes !== undefined
