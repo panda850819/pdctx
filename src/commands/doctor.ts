@@ -1,6 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { getDefaultRegistry } from "../adapters/registry.ts";
 
 const PDCTX_HOME = join(homedir(), ".pdctx");
 
@@ -49,6 +50,15 @@ export async function runDoctor(): Promise<void> {
       detail: existsSync(runtime.path)
         ? runtime.path
         : `${runtime.path} not found — pdctx sync will skip this runtime`,
+    });
+  }
+
+  const reports = await getDefaultRegistry().healthAll();
+  for (const r of reports) {
+    checks.push({
+      name: `bridge:${r.name}`,
+      status: r.health.status,
+      detail: r.health.detail,
     });
   }
 

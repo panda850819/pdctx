@@ -1,5 +1,77 @@
 # Changelog
 
+## v0.0.5 — 2026-04-30 (BridgeAdapter)
+
+Fourth v0.5 batch. Refactors v0.0.4's inline `qmd` spawn into a `BridgeAdapter` interface + a single reference adapter (`QmdBridgeAdapter`). The interface is the contract for **CLI-style local sources** (qmd today; potentially other local CLI tools later). External services (Notion / Linear / Slack / GitHub) will NOT use BridgeAdapter — they go through MCP allowlist instead (see "Layer 5 architecture correction" below).
+
+### Added
+
+- `BridgeAdapter` interface in `src/adapters/types.ts`. Required surface:
+  - `name: string` — registry key
+  - `query(input: BridgeQueryInput): Promise<BridgeQueryResult>` — read-only query
+  - `health(): Promise<BridgeHealth>` — doctor probe
+- `QmdBridgeAdapter` in `src/adapters/qmd.ts`. Wraps `qmd query/search/vsearch` via `spawn()`. Configurable binary name (default `"qmd"`). Health check runs `qmd --version`.
+- `AdapterRegistry` + `getDefaultRegistry()` in `src/adapters/registry.ts`. In-memory registry, preloaded with `QmdBridgeAdapter`. Exposes `get(name)`, `list()`, `healthAll()`.
+- `pdctx doctor` now appends one `bridge:<name>` row per registered adapter, status from `health()`.
+- 6 unit tests over `buildQmdArgs()` argument shapes + `QmdBridgeAdapter.health()` failure path.
+
+### Changed
+
+- `src/commands/query.ts` no longer spawns `qmd` inline. Looks up the `qmd` adapter from the default registry and delegates `query()` calls. Firewall (`planQueryArgs()`) still runs in the CLI layer first — adapter never sees rejected requests.
+
+### Behavior
+
+- `pdctx query/search/vsearch` behavior unchanged from v0.0.4 (firewall + audit log + filter expansion all preserved).
+- `pdctx doctor` adds one new line per adapter, e.g. `✓ bridge:qmd 0.1.0`.
+
+### Verified
+
+- `bun test` 23/23 pass (5 overlay + 6 offboard + 6 knowledge + 6 qmd adapter).
+- `tsc --noEmit` clean.
+- Manual smoke: `pdctx doctor` shows `bridge:qmd` row; `pdctx query "naval" -c knowledge -n 2` returns real results from active `personal:writer` context.
+
+### Out of scope (deferred)
+
+- Config-driven adapter binding via `[sources.<name>] adapter = "..."` schema (decision 3a in the brief). Deferred: with one adapter, code-registration is sufficient. The binding question is moot under the corrected Layer 5 model — see below.
+- `BridgeQueryResult` shape redesign (exit-code coupling to shell semantics, filter-mode stdout interleaving). Deferred: with one CLI adapter and no external consumers of the interface, YAGNI applies. Revisit when a second CLI adapter materializes (unlikely soon — see corrected Layer 5).
+- Write surface on `BridgeAdapter` (read-only contract for now; write goes through `pdctx distill` ritual).
+
+### Layer 5 architecture correction
+
+Surfaced during this batch's review (not part of the original v0 plan). The original framing in README — "Sources (Vault / Notion / Slack / GitHub / Custom MCP), via BridgeAdapter" — was wrong. MCP servers are not a sub-type of BridgeAdapter; they are a parallel substrate.
+
+**Corrected Layer 5 model**:
+
+```
+Sources (Layer 5) — mixed, by source nature
+
+A. CLI adapter (BridgeAdapter)
+   - Trigger: human / pdctx CLI
+   - Fits: local + owned + read-as-search
+   - Today: QmdBridgeAdapter (personal vault search)
+   - Firewall: CLI-layer (planQueryArgs from v0.0.4)
+
+B. MCP allowlist
+   - Trigger: LLM agent inside Claude Code / Codex / Hermes runtime
+   - Fits: external API service + structured read+write
+   - Future: Notion / Linear / Slack / GitHub MCP servers (use official / community, do NOT wrap)
+   - Firewall: per-context allow list written into runtime mcp.json
+```
+
+**Why source nature decides binding (not unification)**:
+
+- qmd over personal vault is a sweet spot: local markdown you own, search-read primary use → CLI adapter is correct
+- Wrapping Notion through qmd-like adapter would break on 5 axes: stale snapshot, structure loss (property/relation/block), read-only (Notion's core action is write), sync hell, LLM agent UX mismatch → must be MCP
+
+**Implications for upcoming batches**:
+
+- Batch 5 was originally planned as "Notion / Linear reference adapters". That plan is wrong. Batch 5 will be: design `[mcp]` block in context.toml (allow / forbid for MCP server names), runtime mcp config writer, integration with Notion / Linear / Slack official MCP servers.
+- Long-horizon (v2, ~6 months): if company-os's gbrain stack proves stable in work-vault and LLM agents start needing high-frequency vault search inside conversations, `qmd` backend may migrate to a PGLite-based long-running service (still fronted by an MCP server). pdctx Layer 5 schema does not need to change for this — it is just a swap from BridgeAdapter "qmd" to MCP allowlist "personal-brain-mcp".
+
+Full reasoning: [`docs/sessions/2026-04-30-pdctx-layer5-architecture-fork.md`](docs/sessions/2026-04-30-pdctx-layer5-architecture-fork.md) (vault-side).
+
+---
+
 ## v0.0.4 — 2026-04-30 (knowledge source firewall)
 
 Third v0.5 batch. Layer 4 of the 4-layer firewall: `pdctx query/search/vsearch` wrap qmd with active-context allow/forbid enforcement. Forbidden collections are rejected outright; bare queries auto-expand to the allowed list.

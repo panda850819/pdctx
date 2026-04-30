@@ -47,7 +47,9 @@ Contexts = your specialized teams (Ops / Writing / Trading / ...)
 2. **Framework** (pdctx CLI — context engine + sync + isolation + adapters + hooks)
 3. **Stack content** (pandastack public + pandastack-private + community stacks)
 4. **AI Runtimes** (Claude Code / Codex CLI / Hermes / Gemini)
-5. **Sources** (Vault / Notion / Slack / GitHub / Custom MCP, via BridgeAdapter)
+5. **Sources** — mixed, by source nature:
+   - **CLI adapter (BridgeAdapter)** for local + owned + search-read sources (Vault via qmd today)
+   - **MCP allowlist** for external API services (Notion / Linear / Slack / GitHub MCP servers)
 
 ## Hard isolation guarantees
 
@@ -65,7 +67,8 @@ Contexts = your specialized teams (Ops / Writing / Trading / ...)
 | v0.5 batch 1 | Overlay merging for context.toml | shipped 2026-04-30 (v0.0.2) |
 | v0.5 batch 2 | Clean offboarding ritual | shipped 2026-04-30 (v0.0.3) |
 | v0.5 batch 3 | Knowledge source firewall (qmd wrap, allow/forbid per context) | shipped 2026-04-30 (v0.0.4) |
-| v0.5 batch 4 | `BridgeAdapter` interface + qmd / notion reference adapters | planned |
+| v0.5 batch 4 | `BridgeAdapter` interface + `QmdBridgeAdapter` reference + registry | shipped 2026-04-30 (v0.0.5) |
+| v0.5 batch 5 | MCP allowlist: `[mcp]` block in context.toml + runtime mcp config writer + Notion/Linear/Slack MCP integration | planned |
 | v1 | Hermes/Gemini runtime loaders, alpha testers | planned |
 
 ## Related repos
