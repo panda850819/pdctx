@@ -7,13 +7,14 @@ import { runDoctor } from "./commands/doctor.ts";
 import { runInit } from "./commands/init.ts";
 import { runPublishCheck } from "./commands/publish-check.ts";
 import { runDistill } from "./commands/distill.ts";
+import { runOffboard } from "./commands/offboard.ts";
 
 const program = new Command();
 
 program
   .name("pdctx")
   .description("Personal context-aware AI operator OS — declare contexts once, AI runtimes follow.")
-  .version("0.0.1");
+  .version("0.0.3");
 
 program
   .command("use <context>")
@@ -64,6 +65,18 @@ program
   .option("--dry-run", "preview only, no write", false)
   .option("--force", "overwrite existing target", false)
   .action((opts) => runDistill(opts));
+
+program
+  .command("offboard <context>")
+  .description("Clean exit ritual: archive memory namespace, restore chmod, clear active state if applicable, audit.")
+  .option("--purge", "remove memory dir instead of archiving (destructive)", false)
+  .option("--force", "offboard even if context is currently active", false)
+  .option("--dry-run", "show plan without making any changes", false)
+  .action((context, opts) => runOffboard(context, {
+    purge: opts.purge,
+    force: opts.force,
+    dryRun: opts.dryRun,
+  }));
 
 program.parseAsync(process.argv).catch((err) => {
   console.error("[pdctx error]", err.message ?? err);

@@ -1,6 +1,6 @@
 {
   "name": "pdctx",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Personal context-aware AI operator OS — declare your contexts once, switch instantly, AI runtimes follow.",
   "type": "module",
   "bin": {

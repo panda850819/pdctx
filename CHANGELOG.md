@@ -1,5 +1,34 @@
 # Changelog
 
+## v0.0.3 — 2026-04-30 (offboarding ritual)
+
+Second v0.5 batch. Adds `pdctx offboard <context>` so a context can leave cleanly: memory archived (or purged), chmod restored, runtime state cleared if active, audit log entry written.
+
+### Added
+
+- `pdctx offboard <context>` command. Default: archive the memory namespace to `~/.pdctx/memory/_archive/<safe-namespace>-<ISO-timestamp>/`. Flags:
+  - `--purge` — `rm -rf` the namespace dir instead of archiving (destructive, no recovery)
+  - `--force` — proceed even if the context is currently active (clears runtime state on claude + codex + `~/.pdctx/state/active.toml`)
+  - `--dry-run` — print the plan, make no changes
+- `restoreOne(namespace)` in `src/engine/isolation.ts` — restore chmod 700 on one namespace tree (BFS), versus the existing `restoreAll()` which spans the full memory root.
+- `planOffboard(ctx, args)` pure function in `src/commands/offboard.ts`, exported for testing. Computes archive path, action (`archive` / `purge` / `absent`), `was_active`, `blocked_by_active`.
+- `AuditEvent` extended with `"offboard"`.
+- 6 unit tests over `planOffboard()` covering: archive default, --purge, memory absent, active-without-force blocked, active-with-force archived, namespace path flattening.
+
+### Behavior
+
+- Active context without `--force` → error, no side effects.
+- Active context with `--force` → archive (or purge), then clear runtime state files for claude + codex + `~/.pdctx/state/active.toml`.
+- Idempotent: re-running offboard on an absent namespace logs `action: absent` and exits cleanly.
+- Audit entry: `{ event: "offboard", context, payload: { action, archived_path?, was_active, purge, force } }`.
+
+### Verified
+
+- `pdctx offboard <ctx> --dry-run` prints plan correctly for inactive / active-without-force / active-with-force paths.
+- `bun test` 11/11 pass (5 overlay + 6 offboard), typecheck clean.
+
+---
+
 ## v0.0.2 — 2026-04-30 (overlay merging)
 
 First v0.5 batch. Closes the `personal-trader.toml` leak surfaced by the visibility scanner on ship day.

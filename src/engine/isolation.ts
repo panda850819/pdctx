@@ -76,6 +76,42 @@ export function applyFirewall(context: ContextDef): IsolationResult {
   return { active_path: activePath, firewalled, unchanged };
 }
 
+export function restoreOne(namespace: string): { restored: string[] } {
+  const root = join(MEMORY_ROOT, namespace);
+  safeRelative(root);
+  const restored: string[] = [];
+  try {
+    chmodSync(root, 0o700);
+  } catch {
+    return { restored };
+  }
+  const queue: string[] = [root];
+  while (queue.length > 0) {
+    const dir = queue.shift()!;
+    try {
+      chmodSync(dir, 0o700);
+      if (!restored.includes(dir)) restored.push(dir);
+    } catch {
+      continue;
+    }
+    let entries: string[];
+    try {
+      entries = readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      const abs = join(dir, entry);
+      try {
+        if (statSync(abs).isDirectory()) queue.push(abs);
+      } catch {
+        // skip unreadable entry
+      }
+    }
+  }
+  return { restored };
+}
+
 export function restoreAll(): { restored: string[] } {
   const queue: string[] = [MEMORY_ROOT];
   const restored: string[] = [];
