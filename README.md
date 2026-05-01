@@ -2,7 +2,7 @@
 
 > Personal context-aware AI operator OS — declare your contexts once, switch instantly, AI runtimes follow.
 
-**Status**: v0.5 in progress (2026-04-30) — `use` / `call` / `distill` / `query` / `search` / `vsearch` / `status` / `doctor` / `init` / `publish-check` / `offboard` wired against Claude Code + Codex CLI. Memory chmod firewall + knowledge source firewall + MCP tool firewall (Claude PreToolUse hook) + JSONL audit log live. Author dogfood window active. Not stable yet.
+**Status**: v0.5 in progress (2026-05-01) — `use` / `call` / `distill` / `query` / `search` / `vsearch` / `status` / `doctor` / `init` / `publish-check` / `skill-validate` / `offboard` wired against Claude Code + Codex CLI. Memory chmod firewall + knowledge source firewall + MCP tool firewall (Claude PreToolUse hook) + skill frontmatter contract + JSONL audit log live. Author dogfood window active. Not stable yet.
 
 ## Quick start
 
@@ -18,6 +18,7 @@ pdctx query "naval"               # qmd hybrid search filtered by active context
 pdctx search "ops" -c work-vault  # rejected if work-vault is forbidden in active context
 pdctx distill --from work:yei:ops --to personal:knowledge-manager \
   --source <path> --target <path> --topic "..." --dry-run
+pdctx skill-validate --path ~/site/skills/pandastack  # validate skill frontmatter (pass/warn/fail)
 pdctx offboard personal:trader --dry-run  # archive memory, restore chmod
 ```
 
@@ -69,6 +70,7 @@ Contexts = your specialized teams (Ops / Writing / Trading / ...)
 | v0.5 batch 3 | Knowledge source firewall (qmd wrap, allow/forbid per context) | shipped 2026-04-30 (v0.0.4) |
 | v0.5 batch 4 | `BridgeAdapter` interface + `QmdBridgeAdapter` reference + registry | shipped 2026-04-30 (v0.0.5) |
 | v0.5 batch 5 | MCP tool firewall: `[mcp].deny` block + PreToolUse hook (Claude side; Codex deferred upstream) | shipped 2026-04-30 (v0.0.6) |
+| v0.5 batch 6 | Skill frontmatter contract (pandastack `SKILL-FRONTMATTER.md`) + `skill-validate` command + publish-check integration | shipped 2026-05-01 (v0.0.7) |
 | v1 | Hermes/Gemini runtime loaders, alpha testers | planned |
 
 ## Related repos

@@ -1,5 +1,58 @@
 # Changelog
 
+## v0.0.7 — 2026-05-01 (skill frontmatter contract + validator)
+
+Sixth slice on top of v0.5 baseline. Skill content (pandastack and any pandastack-compatible stack) gets a frontmatter contract; pdctx gains a validator that enforces it. Spec lives in pandastack repo as `SKILL-FRONTMATTER.md`; pdctx provides the schema-agnostic `skill-validate` tool that any future stack can use.
+
+### Added
+
+- `skill-validate` command. `pdctx skill-validate --path <stack>` walks `<stack>/skills/*/SKILL.md` and `<stack>/plugins/*/skills/*/SKILL.md`, parses frontmatter, classifies each as pass / warn / fail. Exits 1 on any fail.
+- `src/engine/skill-validate.ts` engine: `parseFrontmatter()` (YAML subset — inline scalars, `|`/`>` block scalars, comment lines, single/double quote stripping), `validateSkill(dir)`, `validateStack(path)`, `isStackPath(path)`.
+- 18 unit tests covering parseFrontmatter (5), validateSkill (7 — pass/warn/fail combinations), validateStack (3 — direct + plugin layouts + aggregation), isStackPath (3).
+
+### Changed
+
+- `publish-check` now also runs skill-validate when target path looks like a stack (has `skills/` or `plugins/` subdir). `fail` adds to blocking count, `warn` reports but does not block. Visibility scan + skill-validate share one audit log payload.
+- `AuditEvent` union extended with `"skill-validate"`.
+- `cli.ts` version: `0.0.4` → `0.0.7` (catching up after v0.0.5/0.0.6 missed bumps).
+
+### Contract
+
+Codified in `pandastack/SKILL-FRONTMATTER.md`:
+
+- Required fields: `name` (must equal folder name, plain — no `pandastack:` or `ps-` prefix), `description`.
+- Optional fields: `allowed-tools`, `version`, `user-invocable`, `type`. Other keys are not warned and not blocked.
+- HOT/COLD: `name` + `description` are HOT (in skill index every session); other fields are COLD (loaded on invocation).
+- No character or token budgets in spec or validator. Length discipline is qualitative; downstream tools reading budget numbers may convert them into hard truncation.
+
+### Baseline drift signal
+
+Run on `~/site/skills/pandastack` at ship time:
+
+- 36 scanned
+- 27 pass
+- 8 warn (all `ps-` prefix on legacy skills: init, freeze, checkpoint, careful, qa, review, brief, ship)
+- 1 fail (feed-curator missing frontmatter entirely)
+
+Drift is intentionally not auto-fixed in this slice. Migration is a follow-up sprint after dogfood window.
+
+### Out of scope
+
+- Auto-fix mode (`--fix`). Deferred until spec is stable and dogfood gives signal on which drift forms are safe to rewrite.
+- JSON schema export. Useful for IDE/LSP integration but premature when spec is one week old.
+- pandastack-private same-treatment. Personal stack ships first; private stack follows after public dogfood.
+- Frontmatter consumption by pdctx itself (firewall hint, visibility, user-invocable enforcement). v1 territory.
+
+### Files
+
+- New: `src/engine/skill-validate.ts`, `src/engine/skill-validate.test.ts`, `src/commands/skill-validate.ts`
+- Changed: `src/cli.ts`, `src/commands/publish-check.ts`, `src/engine/audit.ts`, `package.json`, `CHANGELOG.md`, `README.md`
+- Companion in pandastack: `SKILL-FRONTMATTER.md`
+
+### Tests
+
+54/54 (18 new + 36 existing). `tsc --noEmit` clean.
+
 ## v0.0.6 — 2026-04-30 (MCP allowlist firewall)
 
 Fifth v0.5 batch. Layer 5 firewall for MCP tools: `[mcp].deny` block in context.toml lists tool-name glob patterns; pdctx publishes them to `~/.claude/state/pdctx-active.json` and `~/.codex/state/pdctx-active.json`; a Claude Code PreToolUse hook reads the state and blocks matching MCP tool calls. Hook-based runtime enforcement, not config mutation — see "Design rationale" below.

@@ -1,30 +1,77 @@
 import { resolve } from "node:path";
-import { scan } from "../engine/visibility.ts";
 import { log as auditLog } from "../engine/audit.ts";
+import { isStackPath, validateStack } from "../engine/skill-validate.ts";
+import { scan } from "../engine/visibility.ts";
 
 export async function runPublishCheck(opts: { path?: string }): Promise<void> {
   const root = resolve(opts.path ?? process.cwd());
-  const result = scan(root);
+  const visibility = scan(root);
 
-  if (result.violations.length === 0) {
-    console.log(`✓ visibility check clean — ${result.scanned} files scanned in ${root}`);
-    auditLog({
-      event: "publish-check",
-      payload: { scan_root: root, scanned: result.scanned, violations: 0 },
-    });
-    return;
+  let blocking = visibility.violations.length;
+
+  if (visibility.violations.length === 0) {
+    console.log(
+      `✓ visibility check clean — ${visibility.scanned} files scanned in ${root}`,
+    );
+  } else {
+    for (const v of visibility.violations) {
+      console.log(`  [${v.marker}] ${v.file}:${v.line}`);
+      console.log(`    ${v.excerpt}`);
+    }
+    console.log(
+      `\n✗ ${visibility.violations.length} visibility violations found`,
+    );
   }
 
-  for (const v of result.violations) {
-    console.log(`  [${v.marker}] ${v.file}:${v.line}`);
-    console.log(`    ${v.excerpt}`);
+  let skillScanned = 0;
+  let skillPass = 0;
+  let skillWarn = 0;
+  let skillFail = 0;
+
+  if (isStackPath(root)) {
+    const skill = validateStack(root);
+    skillScanned = skill.scanned;
+    skillPass = skill.pass.length;
+    skillWarn = skill.warn.length;
+    skillFail = skill.fail.length;
+
+    if (skillFail > 0) {
+      console.log(`\n✗ skill-validate ${skillFail} fail`);
+      for (const issue of skill.fail) {
+        console.log(`  FAIL  ${issue.skill}`);
+        for (const r of issue.reasons) console.log(`        - ${r}`);
+      }
+      blocking += skillFail;
+    }
+    if (skillWarn > 0) {
+      console.log(
+        `\n  ${skillWarn} skill-validate warnings (non-blocking)`,
+      );
+      for (const issue of skill.warn) {
+        console.log(`  WARN  ${issue.skill}`);
+        for (const r of issue.reasons) console.log(`        - ${r}`);
+      }
+    }
+    if (skillFail === 0 && skillWarn === 0) {
+      console.log(`✓ skill-validate clean — ${skillScanned} skills`);
+    }
   }
-  console.log(`\n✗ ${result.violations.length} violations found — block publish`);
 
   auditLog({
     event: "publish-check",
-    payload: { scan_root: root, scanned: result.scanned, violations: result.violations.length },
+    payload: {
+      scan_root: root,
+      scanned: visibility.scanned,
+      violations: visibility.violations.length,
+      skill_scanned: skillScanned,
+      skill_pass: skillPass,
+      skill_warn: skillWarn,
+      skill_fail: skillFail,
+    },
   });
 
-  process.exit(1);
+  if (blocking > 0) {
+    console.log(`\nblocking issues: ${blocking}`);
+    process.exit(1);
+  }
 }

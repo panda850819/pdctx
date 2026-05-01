@@ -2,7 +2,7 @@ import { appendFileSync, mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type AuditEvent = "init" | "use" | "call" | "distill" | "publish-check" | "doctor" | "offboard" | "query";
+export type AuditEvent = "init" | "use" | "call" | "distill" | "publish-check" | "doctor" | "offboard" | "query" | "skill-validate";
 
 export interface AuditEntry {
   event: AuditEvent;

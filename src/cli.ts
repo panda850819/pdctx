@@ -6,6 +6,7 @@ import { runStatus } from "./commands/status.ts";
 import { runDoctor } from "./commands/doctor.ts";
 import { runInit } from "./commands/init.ts";
 import { runPublishCheck } from "./commands/publish-check.ts";
+import { runSkillValidate } from "./commands/skill-validate.ts";
 import { runDistill } from "./commands/distill.ts";
 import { runOffboard } from "./commands/offboard.ts";
 import { runQuery } from "./commands/query.ts";
@@ -15,7 +16,7 @@ const program = new Command();
 program
   .name("pdctx")
   .description("Personal context-aware AI operator OS — declare contexts once, AI runtimes follow.")
-  .version("0.0.4");
+  .version("0.0.7");
 
 program
   .command("use <context>")
@@ -51,9 +52,15 @@ program
 
 program
   .command("publish-check")
-  .description("Scan a repo path for work-domain markers before pushing to a public remote.")
+  .description("Scan a repo path for work-domain markers before pushing to a public remote. If the path is a stack (has skills/ or plugins/), also run skill-validate.")
   .option("--path <path>", "directory to scan (defaults to cwd)")
   .action(runPublishCheck);
+
+program
+  .command("skill-validate")
+  .description("Validate skill frontmatter against the pandastack contract. Reports pass / warn / fail per skill. Exits 1 on any fail.")
+  .option("--path <path>", "stack path to scan (defaults to cwd)")
+  .action(runSkillValidate);
 
 program
   .command("distill")
