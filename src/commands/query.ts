@@ -10,7 +10,7 @@ import { getDefaultRegistry } from "../adapters/registry.ts";
 import type { BridgeQueryMode } from "../adapters/types.ts";
 
 const STATE_FILE = join(homedir(), ".pdctx", "state", "active.toml");
-const ADAPTER_NAME = "qmd";
+const ADAPTER_NAME = "gbrain";
 
 export type QmdSubcommand = BridgeQueryMode;
 

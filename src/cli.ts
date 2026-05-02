@@ -17,7 +17,7 @@ const program = new Command();
 program
   .name("pdctx")
   .description("Personal context-aware AI operator OS — declare contexts once, AI runtimes follow.")
-  .version("0.0.8");
+  .version("0.0.9");
 
 program
   .command("use <context>")

@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.0.9 — 2026-05-02 (qmd retirement — gbrain sole query path)
+
+qmd adapter unregistered. All `pdctx query/search/vsearch` calls now route through `GbrainAdapter`. [knowledge] blocks removed from all 8 context TOMLs (they were the qmd collection firewall; gbrain firewall lives in [gbrain] blocks, already present since v0.0.8).
+
+### Changed
+
+- `src/adapters/registry.ts`: removed `QmdBridgeAdapter` import and registration. `buildDefaultRegistry()` now registers only `GbrainAdapter`.
+- `src/commands/query.ts`: `ADAPTER_NAME` changed from `"qmd"` to `"gbrain"`. Query commands delegate to `GbrainAdapter` exclusively.
+- `[knowledge]` blocks removed from all 8 context TOMLs:
+  - 4 personal contexts (writer/trader/developer/knowledge-manager) in pandastack
+  - 3 work-yei contexts (ops/hr/finance) in pandastack-private
+  - 1 work-sommet context (abyss-po) in pandastack-private
+- [gbrain] block comments cleaned up (removed "Phase 1 placeholder" and stale toggle guidance).
+
+### Behavior
+
+- `pdctx query/search/vsearch` now routes through gbrain. Work contexts (yei/sommet) have `allow = ["work-vault"]` or `allow = []` with `write_mode = "deny"` — queries will return empty until work-vault is ingested as a gbrain source (Phase 2).
+- `pdctx doctor` no longer shows `bridge:qmd` row.
+- `qmd` binary is unlinked from PATH (bun unlink). Source at `~/site/cli/qmd` and gbrain DB are untouched.
+
+### Out of scope
+
+- work-vault gbrain ingestion (Phase 2 — separate cut once ingestion is confirmed stable).
+- Removing `src/adapters/qmd.ts` source file (kept for reference until Phase 2 is done and there is no rollback need).
+
+---
+
 ## v0.0.8 — 2026-05-02 (gbrain adapter + wire-hook)
 
 Seventh slice on top of v0.0.7 baseline. Two features: (1) `GbrainAdapter` — Layer 4 gbrain source firewall with per-context allow/forbid/write_mode, registered in the default adapter registry so `pdctx doctor` surfaces `bridge:gbrain`; (2) `pdctx wire-hook` — idempotent hook installer for detected runtimes (Claude gets script chmod + settings.json entry; Codex gets a notice-only placeholder pending upstream hook event support).

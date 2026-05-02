@@ -1,5 +1,4 @@
 import type { BridgeAdapter, BridgeHealth } from "./types.ts";
-import { QmdBridgeAdapter } from "./qmd.ts";
 import { GbrainAdapter } from "./gbrain.ts";
 
 export interface AdapterHealthReport {
@@ -31,7 +30,6 @@ export class AdapterRegistry {
 
 export function buildDefaultRegistry(): AdapterRegistry {
   const registry = new AdapterRegistry();
-  registry.register(new QmdBridgeAdapter());
   registry.register(new GbrainAdapter());
   return registry;
 }
