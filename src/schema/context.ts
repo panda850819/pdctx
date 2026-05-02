@@ -9,6 +9,7 @@ export interface ContextDef {
   memory: { namespace: string; firewall_from: string[] };
   sources: { vault?: string; notion_workspace?: string; linear_team?: string };
   knowledge?: { allow: string[]; forbid: string[] };
+  gbrain?: { allow: string[]; forbid: string[]; write_mode: "read-only" | "read-write" | "deny" };
   mcp?: { deny: string[] };
   notes?: string;
 }
@@ -22,6 +23,7 @@ export interface ContextOverlay {
   memory?: { namespace?: string; firewall_from?: string[] };
   sources?: ContextDef["sources"];
   knowledge?: { allow?: string[]; forbid?: string[] };
+  gbrain?: { allow?: string[]; forbid?: string[]; write_mode?: "read-only" | "read-write" | "deny" };
   mcp?: { deny?: string[] };
   notes?: string;
 }
@@ -75,6 +77,7 @@ export function validate(raw: unknown, path = "<unknown>"): ContextDef {
   const m = obj(path, "memory", o["memory"]);
   const sr = o["sources"] !== undefined ? obj(path, "sources", o["sources"]) : ({} as Record<string, unknown>);
   const kn = o["knowledge"] !== undefined ? obj(path, "knowledge", o["knowledge"]) : undefined;
+  const gb = o["gbrain"] !== undefined ? obj(path, "gbrain", o["gbrain"]) : undefined;
   const mc = o["mcp"] !== undefined ? obj(path, "mcp", o["mcp"]) : undefined;
   const notes = o["notes"];
 
@@ -111,6 +114,15 @@ export function validate(raw: unknown, path = "<unknown>"): ContextDef {
           knowledge: {
             allow: arr(path, "knowledge.allow", kn["allow"] ?? []),
             forbid: arr(path, "knowledge.forbid", kn["forbid"] ?? []),
+          },
+        }
+      : {}),
+    ...(gb !== undefined
+      ? {
+          gbrain: {
+            allow: arr(path, "gbrain.allow", gb["allow"] ?? []),
+            forbid: arr(path, "gbrain.forbid", gb["forbid"] ?? []),
+            write_mode: (gb["write_mode"] ?? "deny") as "read-only" | "read-write" | "deny",
           },
         }
       : {}),
@@ -206,6 +218,19 @@ export function validateOverlay(raw: unknown, path = "<unknown>"): ContextOverla
     const forbid = arrOpt(path, "knowledge.forbid", kn["forbid"]);
     if (forbid !== undefined) partial.forbid = forbid;
     if (Object.keys(partial).length > 0) out.knowledge = partial;
+  }
+
+  if (o["gbrain"] !== undefined) {
+    const gb = obj(path, "gbrain", o["gbrain"]);
+    const partial: { allow?: string[]; forbid?: string[]; write_mode?: "read-only" | "read-write" | "deny" } = {};
+    const allow = arrOpt(path, "gbrain.allow", gb["allow"]);
+    if (allow !== undefined) partial.allow = allow;
+    const forbid = arrOpt(path, "gbrain.forbid", gb["forbid"]);
+    if (forbid !== undefined) partial.forbid = forbid;
+    if (gb["write_mode"] !== undefined) {
+      partial.write_mode = gb["write_mode"] as "read-only" | "read-write" | "deny";
+    }
+    if (Object.keys(partial).length > 0) out.gbrain = partial;
   }
 
   if (o["mcp"] !== undefined) {

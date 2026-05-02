@@ -10,13 +10,14 @@ import { runSkillValidate } from "./commands/skill-validate.ts";
 import { runDistill } from "./commands/distill.ts";
 import { runOffboard } from "./commands/offboard.ts";
 import { runQuery } from "./commands/query.ts";
+import { runWireHook } from "./commands/wire-hook.ts";
 
 const program = new Command();
 
 program
   .name("pdctx")
   .description("Personal context-aware AI operator OS — declare contexts once, AI runtimes follow.")
-  .version("0.0.7");
+  .version("0.0.8");
 
 program
   .command("use <context>")
@@ -100,6 +101,12 @@ program
     force: opts.force,
     dryRun: opts.dryRun,
   }));
+
+program
+  .command("wire-hook")
+  .description("Install pdctx MCP firewall hooks into detected runtimes (Claude, Codex). Idempotent.")
+  .option("--dry-run", "show plan without making any changes", false)
+  .action((opts) => runWireHook({ dryRun: opts.dryRun }));
 
 program.parseAsync(process.argv).catch((err) => {
   console.error("[pdctx error]", err.message ?? err);

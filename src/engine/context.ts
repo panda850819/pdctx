@@ -37,6 +37,15 @@ export function applyOverlay(base: ContextDef, overlay: ContextOverlay): Context
         }
       : base.knowledge;
 
+  const mergedGbrain =
+    overlay.gbrain !== undefined
+      ? {
+          allow: dedupConcat(base.gbrain?.allow ?? [], overlay.gbrain.allow),
+          forbid: dedupConcat(base.gbrain?.forbid ?? [], overlay.gbrain.forbid),
+          write_mode: overlay.gbrain.write_mode ?? base.gbrain?.write_mode ?? "deny",
+        }
+      : base.gbrain;
+
   const mergedMcp =
     overlay.mcp !== undefined
       ? {
@@ -61,6 +70,7 @@ export function applyOverlay(base: ContextDef, overlay: ContextOverlay): Context
     },
     sources: { ...base.sources, ...(overlay.sources ?? {}) },
     ...(mergedKnowledge !== undefined ? { knowledge: mergedKnowledge } : {}),
+    ...(mergedGbrain !== undefined ? { gbrain: mergedGbrain } : {}),
     ...(mergedMcp !== undefined ? { mcp: mergedMcp } : {}),
     ...(overlay.notes !== undefined
       ? { notes: overlay.notes }

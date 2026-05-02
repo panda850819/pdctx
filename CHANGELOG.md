@@ -1,5 +1,67 @@
 # Changelog
 
+## v0.0.8 — 2026-05-02 (gbrain adapter + wire-hook)
+
+Seventh slice on top of v0.0.7 baseline. Two features: (1) `GbrainAdapter` — Layer 4 gbrain source firewall with per-context allow/forbid/write_mode, registered in the default adapter registry so `pdctx doctor` surfaces `bridge:gbrain`; (2) `pdctx wire-hook` — idempotent hook installer for detected runtimes (Claude gets script chmod + settings.json entry; Codex gets a notice-only placeholder pending upstream hook event support).
+
+### Added
+
+- `GbrainAdapter` in `src/adapters/gbrain.ts`. Implements `BridgeAdapter`:
+  - `query()`: spawns `gbrain search <text> [--include-slug-prefixes <source>/]*` based on `ctx.gbrain.allow`. Throws `FirewallError` when `allow = []`.
+  - `health()`: spawns `gbrain doctor --fast --json`, parses `{ status }` field.
+  - `write()`: stub that rejects with `FirewallError` (v0 — gbrain writes not yet in scope).
+- `FirewallError` class in `src/adapters/gbrain.ts` (extends `Error`). Used for both allow-list enforcement and write-stub rejection.
+- `buildGbrainArgs(input, ctx)` pure function exported for testing. Builds the CLI args array; throws `FirewallError` when allow list is empty.
+- `[gbrain]` block in `ContextDef` and `ContextOverlay` in `src/schema/context.ts`:
+  - `allow: string[]`, `forbid: string[]`, `write_mode: "read-only" | "read-write" | "deny"` (defaults to `"deny"` when absent — fail-closed).
+- `applyOverlay()` in `src/engine/context.ts` extended to merge `gbrain` block (allow/forbid use dedup-concat; write_mode uses overlay-over-base scalar override; mirrors `knowledge` semantics).
+- `~/.pdctx/source-policy.json` (mode 0600) written with `schema_version: 1` shape. System-wide per-source defaults for Phase 2.
+- `pdctx wire-hook` command in `src/commands/wire-hook.ts`:
+  - Detects Claude (~/.claude present) and Codex (~/.codex present).
+  - Claude path: ensures `~/.claude/hooks/pre-tool-use/pdctx-mcp-firewall.sh` is executable + ensures `PreToolUse` entry with matcher `mcp__.*` in `~/.claude/settings.json`. Idempotent — `already_wired` if both conditions met.
+  - Codex path: notice only — PreToolUse hook event not yet available upstream (Codex 0.124.0).
+  - `planWireHook(input)` pure function exported for testing (no disk I/O).
+  - `--dry-run` flag: prints plan without making changes.
+
+### Changed
+
+- `src/adapters/registry.ts`: `GbrainAdapter` registered in `buildDefaultRegistry()` → `bridge:gbrain` appears in `pdctx doctor` output automatically.
+- 8 context.toml files updated to declare `[gbrain]` block:
+  - 4 personal contexts (writer/trader/developer/knowledge-manager): `allow = ["panda-vault"]`, `write_mode = "read-only"`. Phase 1 placeholder — panda-vault not yet ingested into gbrain. gbrain adapter exists; Phase 2 toggle is a separate cut.
+  - 3 work-yei contexts (ops/hr/finance): `allow = ["work-vault"]`, `write_mode = "deny"`. Fails closed — work-vault not yet a gbrain source.
+  - 1 work-sommet context (abyss-po): `allow = []`, `write_mode = "deny"`. No gbrain source for Sommet yet.
+- `src/cli.ts` registers `wire-hook` command.
+- `package.json` + `src/cli.ts` version: `0.0.7` → `0.0.8`.
+
+### Behavior
+
+- gbrain firewall: `allow = []` → `FirewallError` thrown before spawning any subprocess. Non-empty allow list → each source maps to `--include-slug-prefixes <source>/` arg pair.
+- `pdctx doctor` now shows `bridge:gbrain` row. Health: runs `gbrain doctor --fast --json`; `{ status: "ok" }` → healthy; binary missing or non-zero exit → unhealthy with reason.
+- `pdctx wire-hook`: if both chmod + settings.json entry already correct → prints `already_wired`, exits 0, no writes. Safe to run on any machine.
+
+### Phase 1 / Phase 2 boundary
+
+- gbrain adapter is registered and context TOMLs have `[gbrain]` blocks, but **`pdctx query/search/vsearch` still routes through the `qmd` adapter only** (Phase 2 toggle deferred). The gbrain block is a data contract + firewall spec, not an active query path yet.
+- Phase 2 will add `pdctx gbrain-query` (or toggle existing query commands) to route through `GbrainAdapter`. That cut is a separate PR once work-vault and panda-vault are confirmed gbrain sources.
+
+### Out of scope
+
+- Codex PreToolUse hook script: blocked on upstream Codex CLI hook event support.
+- gbrain as active query path (Phase 2).
+- `pdctx wire-hook --runtime <name>` flag to install for one runtime only (deferred; two runtimes is manageable without it).
+
+### Files
+
+- New: `src/adapters/gbrain.ts`, `src/adapters/gbrain.test.ts`, `src/commands/wire-hook.ts`, `src/commands/wire-hook.test.ts`, `~/.pdctx/source-policy.json`
+- Changed: `src/adapters/registry.ts`, `src/schema/context.ts`, `src/engine/context.ts`, `src/cli.ts`, `package.json`, `CHANGELOG.md`
+- Context TOMLs: all 4 personal contexts + 3 work-yei + 1 work-sommet
+
+### Tests
+
+68/68 (7 gbrain + 7 wire-hook + 54 existing). `tsc --noEmit` clean.
+
+---
+
 ## v0.0.7 — 2026-05-01 (skill frontmatter contract + validator)
 
 Sixth slice on top of v0.5 baseline. Skill content (pandastack and any pandastack-compatible stack) gets a frontmatter contract; pdctx gains a validator that enforces it. Spec lives in pandastack repo as `SKILL-FRONTMATTER.md`; pdctx provides the schema-agnostic `skill-validate` tool that any future stack can use.
