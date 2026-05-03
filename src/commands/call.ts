@@ -8,6 +8,7 @@ export interface CallOptions {
   cwd?: string;
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
   allowNetwork?: boolean;
+  writableRoots?: string[];
 }
 
 export async function runCall(
@@ -41,6 +42,7 @@ export async function runCall(
     cwd: opts.cwd,
     sandbox: opts.sandbox,
     allowNetwork: opts.allowNetwork,
+    writableRoots: opts.writableRoots,
     onStream: (chunk) => process.stdout.write(chunk),
   });
 

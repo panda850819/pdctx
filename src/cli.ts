@@ -40,6 +40,7 @@ program
   .option("--cwd <dir>", "working dir for the spawned runtime (codex --cd, claude spawn cwd). Default: current shell cwd.")
   .option("--sandbox <mode>", "codex sandbox: read-only | workspace-write | danger-full-access", "workspace-write")
   .option("--allow-network", "grant network access to spawned codex (needed for gbrain / Ollama / external APIs). No-op for claude or danger-full-access sandbox.", false)
+  .option("--writable-roots <paths>", "comma-separated extra writable dirs for codex (beyond cwd). Required for orchestrator tasks that touch ~/.claude, ~/.codex, ~/.pdctx etc. No-op for claude or danger-full-access.")
   .action((context, task, opts) => runCall(context, task, {
     runtime: opts.runtime,
     model: opts.model,
@@ -47,6 +48,7 @@ program
     cwd: opts.cwd,
     sandbox: opts.sandbox,
     allowNetwork: opts.allowNetwork,
+    writableRoots: opts.writableRoots ? opts.writableRoots.split(",").map((s: string) => s.trim()).filter(Boolean) : undefined,
   }));
 
 program

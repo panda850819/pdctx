@@ -33,6 +33,15 @@ export interface DispatchOptions {
    * unrestricted).
    */
   allowNetwork?: boolean;
+  /**
+   * Extra writable directories beyond `cwd`. Required for orchestrator-style
+   * tasks that need to touch harness paths (~/.claude, ~/.codex, ~/.pdctx,
+   * ~/.hermes) outside the project repo. For codex with workspace-write
+   * sandbox, translates to
+   * `-c sandbox_workspace_write.writable_roots=[...]`. No-op for claude
+   * or for `danger-full-access`.
+   */
+  writableRoots?: string[];
 }
 
 const STATE_DIR = join(homedir(), ".pdctx", "state");
@@ -108,6 +117,13 @@ export async function dispatch(
     // override so codex can reach gbrain Postgres, Ollama, etc.
     if (allowNetwork && sandbox === "workspace-write") {
       cmd.push("-c", "sandbox_workspace_write.network_access=true");
+    }
+    // Extra writable dirs for orchestrator tasks that need to touch harness
+    // paths outside cwd. Pass as TOML array literal.
+    const writableRoots = opts?.writableRoots ?? [];
+    if (writableRoots.length > 0 && sandbox === "workspace-write") {
+      const tomlArr = writableRoots.map((p) => `"${p.replace(/"/g, '\\"')}"`).join(",");
+      cmd.push("-c", `sandbox_workspace_write.writable_roots=[${tomlArr}]`);
     }
     if (model !== "default") cmd.push("-m", model);
     cmd.push(prompt);
