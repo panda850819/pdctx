@@ -65,14 +65,20 @@ export async function runStatus(): Promise<void> {
     return;
   }
 
-  const lines = readFileSync(CALLS_FILE, "utf8")
+  const allLines = readFileSync(CALLS_FILE, "utf8")
     .split("\n")
     .filter((l) => l.trim())
-    .slice(-10)
-    .map((l) => JSON.parse(l) as CallEntry);
+    .map((l) => JSON.parse(l) as Partial<CallEntry> & { id: string; status: string });
 
-  const running = lines.filter((c) => c.status === "running");
-  const done = lines.filter((c) => c.status !== "running").reverse().slice(0, 5);
+  const byId = new Map<string, CallEntry>();
+  for (const entry of allLines) {
+    const prev = byId.get(entry.id);
+    byId.set(entry.id, { ...(prev ?? {}), ...entry } as CallEntry);
+  }
+  const calls = Array.from(byId.values());
+
+  const running = calls.filter((c) => c.status === "running");
+  const done = calls.filter((c) => c.status !== "running").reverse().slice(0, 5);
 
   console.log(`\nIn-flight calls (${running.length}):`);
   for (const c of running) {
