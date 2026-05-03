@@ -29,6 +29,9 @@ export async function runSkillValidate(opts: { path?: string }): Promise<void> {
   console.log(
     `\n${result.scanned} scanned — ${result.pass.length} pass, ${result.warn.length} warn, ${result.fail.length} fail`,
   );
+  console.log(
+    `${result.withContextMetadata}/${result.scanned} skills have context metadata (${result.withoutContextMetadata} without)`,
+  );
 
   auditLog({
     event: "skill-validate",
@@ -38,6 +41,8 @@ export async function runSkillValidate(opts: { path?: string }): Promise<void> {
       pass: result.pass.length,
       warn: result.warn.length,
       fail: result.fail.length,
+      with_context_metadata: result.withContextMetadata,
+      without_context_metadata: result.withoutContextMetadata,
     },
   });
 

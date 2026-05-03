@@ -83,6 +83,9 @@ function buildPrompt(context: ContextDef, task: string): string {
   ].join("\n");
 }
 
+// TODO(layer-5): consume SkillFrontmatter.{reads,writes,forbids} at PreToolUse
+// to enforce per-skill allowlists on tool args. See docs/skill-context-schema.md.
+
 export async function dispatch(
   context: ContextDef,
   task: string,

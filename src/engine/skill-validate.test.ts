@@ -32,6 +32,14 @@ describe("parseFrontmatter", () => {
     expect(fm?.description).toBe("line one\nline two");
   });
 
+  test("parses sequence fields", () => {
+    const fm = parseFrontmatter(
+      "---\nname: foo\ndescription: bar\nreads:\n  - repo: \"**\"\n  - cli: git\nwrites: []\n---\n",
+    );
+    expect(fm?.reads).toEqual(['repo: "**"', "cli: git"]);
+    expect(fm?.writes).toEqual([]);
+  });
+
   test("returns null for missing frontmatter", () => {
     expect(parseFrontmatter("# body without frontmatter")).toBeNull();
   });
@@ -53,7 +61,24 @@ describe("parseFrontmatter", () => {
 });
 
 describe("validateSkill", () => {
-  test("pass when name matches folder + description present", () => {
+  test("pass when name matches folder + description and context metadata present", () => {
+    const root = setupStack();
+    try {
+      const dir = join(root, "skills", "foo");
+      mkdirSync(dir);
+      writeFileSync(
+        join(dir, "SKILL.md"),
+        "---\nname: foo\ndescription: triggers on foo\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n# Foo\n",
+      );
+      const issue = validateSkill(dir);
+      expect(issue.status).toBe("pass");
+      expect(issue.reasons).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  });
+
+  test("warn when context metadata is missing", () => {
     const root = setupStack();
     try {
       const dir = join(root, "skills", "foo");
@@ -63,8 +88,26 @@ describe("validateSkill", () => {
         "---\nname: foo\ndescription: triggers on foo\n---\n# Foo\n",
       );
       const issue = validateSkill(dir);
-      expect(issue.status).toBe("pass");
-      expect(issue.reasons).toEqual([]);
+      expect(issue.status).toBe("warn");
+      expect(issue.reasons.some((r) => r.includes("no context metadata"))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  });
+
+  test("fail on malformed context metadata", () => {
+    const root = setupStack();
+    try {
+      const dir = join(root, "skills", "foo");
+      mkdirSync(dir);
+      writeFileSync(
+        join(dir, "SKILL.md"),
+        "---\nname: foo\ndescription: triggers on foo\nreads:\n  - repo: ../secret\nclassification: mutate\n---\n# Foo\n",
+      );
+      const issue = validateSkill(dir);
+      expect(issue.status).toBe("fail");
+      expect(issue.reasons.some((r) => r.includes("must not contain"))).toBe(true);
+      expect(issue.reasons.some((r) => r.includes("classification"))).toBe(true);
     } finally {
       rmSync(root, { recursive: true });
     }
@@ -77,7 +120,7 @@ describe("validateSkill", () => {
       mkdirSync(dir);
       writeFileSync(
         join(dir, "SKILL.md"),
-        "---\nname: pandastack:foo\ndescription: triggers on foo\n---\n",
+        "---\nname: pandastack:foo\ndescription: triggers on foo\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const issue = validateSkill(dir);
       expect(issue.status).toBe("warn");
@@ -94,7 +137,7 @@ describe("validateSkill", () => {
       mkdirSync(dir);
       writeFileSync(
         join(dir, "SKILL.md"),
-        "---\nname: ps-foo\ndescription: triggers on foo\n---\n",
+        "---\nname: ps-foo\ndescription: triggers on foo\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const issue = validateSkill(dir);
       expect(issue.status).toBe("warn");
@@ -110,7 +153,7 @@ describe("validateSkill", () => {
       mkdirSync(dir);
       writeFileSync(
         join(dir, "SKILL.md"),
-        "---\nname: bar\ndescription: triggers on bar\n---\n",
+        "---\nname: bar\ndescription: triggers on bar\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const issue = validateSkill(dir);
       expect(issue.status).toBe("warn");
@@ -177,7 +220,7 @@ describe("validateStack", () => {
       mkdirSync(dir);
       writeFileSync(
         join(dir, "SKILL.md"),
-        "---\nname: alpha\ndescription: a\n---\n",
+        "---\nname: alpha\ndescription: a\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const result = validateStack(root);
       expect(result.scanned).toBe(1);
@@ -194,7 +237,7 @@ describe("validateStack", () => {
       mkdirSync(dir, { recursive: true });
       writeFileSync(
         join(dir, "SKILL.md"),
-        "---\nname: beta\ndescription: b\n---\n",
+        "---\nname: beta\ndescription: b\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const result = validateStack(root);
       expect(result.scanned).toBe(1);
@@ -211,13 +254,13 @@ describe("validateStack", () => {
       mkdirSync(ok);
       writeFileSync(
         join(ok, "SKILL.md"),
-        "---\nname: ok\ndescription: ok desc\n---\n",
+        "---\nname: ok\ndescription: ok desc\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const drift = join(root, "skills", "drift");
       mkdirSync(drift);
       writeFileSync(
         join(drift, "SKILL.md"),
-        "---\nname: ps-drift\ndescription: drift desc\n---\n",
+        "---\nname: ps-drift\ndescription: drift desc\nreads: []\nwrites: []\nforbids: []\ndomain: shared\nclassification: read\n---\n",
       );
       const broken = join(root, "skills", "broken");
       mkdirSync(broken);
@@ -228,6 +271,8 @@ describe("validateStack", () => {
       expect(result.pass.length).toBe(1);
       expect(result.warn.length).toBe(1);
       expect(result.fail.length).toBe(1);
+      expect(result.withContextMetadata).toBe(2);
+      expect(result.withoutContextMetadata).toBe(1);
     } finally {
       rmSync(root, { recursive: true });
     }

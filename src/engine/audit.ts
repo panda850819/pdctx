@@ -21,6 +21,12 @@ export function log(entry: Omit<AuditEntry, "timestamp"> & { timestamp?: string 
   const month = timestamp.slice(0, 7); // "2026-04"
   const file = join(AUDIT_DIR, `${month}.jsonl`);
 
-  mkdirSync(AUDIT_DIR, { recursive: true });
-  appendFileSync(file, JSON.stringify(full) + "\n");
+  try {
+    mkdirSync(AUDIT_DIR, { recursive: true });
+    appendFileSync(file, JSON.stringify(full) + "\n");
+  } catch (err) {
+    const code = typeof err === "object" && err !== null && "code" in err ? String(err.code) : "";
+    if (code === "EACCES" || code === "EPERM" || code === "EROFS") return;
+    throw err;
+  }
 }
