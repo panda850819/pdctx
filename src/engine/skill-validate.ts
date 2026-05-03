@@ -132,7 +132,7 @@ function validateAccessEntry(field: string, entry: string): string | undefined {
   return undefined;
 }
 
-function validateContextMetadata(fm: SkillFrontmatter, skill: string): { hasMetadata: boolean; reasons: string[] } {
+function validateContextMetadata(fm: SkillFrontmatter, skill: string): { hasMetadata: boolean; reasons: string[]; warnReasons: string[] } {
   const hasMetadata = hasContextMetadata(fm);
   if (!hasMetadata) {
     return {
@@ -140,10 +140,12 @@ function validateContextMetadata(fm: SkillFrontmatter, skill: string): { hasMeta
       reasons: [
         `skill ${skill} has no context metadata; treating as domain=${DEFAULT_SKILL_CONTEXT.domain}, classification=${DEFAULT_SKILL_CONTEXT.classification}`,
       ],
+      warnReasons: [],
     };
   }
 
   const reasons: string[] = [];
+  const warnReasons: string[] = [];
   for (const field of ACCESS_LIST_FIELDS) {
     const value = fm[field];
     if (value === undefined) continue;
@@ -152,6 +154,12 @@ function validateContextMetadata(fm: SkillFrontmatter, skill: string): { hasMeta
       continue;
     }
     for (const entry of value) {
+      // vault: with absolute path is a warning; the correct form is file: for cross-vault paths
+      const absVaultMatch = entry.match(/^vault:\s+(\/.*)/);
+      if (absVaultMatch) {
+        warnReasons.push(`${field} vault: entry uses absolute path; use file: instead: ${entry}`);
+        continue;
+      }
       const reason = validateAccessEntry(field, entry);
       if (reason) reasons.push(reason);
     }
@@ -172,7 +180,7 @@ function validateContextMetadata(fm: SkillFrontmatter, skill: string): { hasMeta
     }
   }
 
-  return { hasMetadata, reasons };
+  return { hasMetadata, reasons, warnReasons };
 }
 
 export function validateSkill(skillDir: string): SkillIssue {
@@ -217,6 +225,10 @@ export function validateSkill(skillDir: string): SkillIssue {
   }
 
   const metadata = validateContextMetadata(fm, skill);
+  if (metadata.warnReasons.length > 0) {
+    reasons.push(...metadata.warnReasons);
+    if (level !== "fail") level = "warn";
+  }
   if (metadata.reasons.length > 0) {
     reasons.push(...metadata.reasons);
     level = metadata.hasMetadata ? "fail" : level === "fail" ? "fail" : "warn";

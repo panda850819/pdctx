@@ -212,6 +212,59 @@ describe("validateSkill", () => {
   });
 });
 
+describe("validateSkill - vault resolution", () => {
+  test("pass with vault: relative path in reads (primary vault)", () => {
+    const root = setupStack();
+    try {
+      const dir = join(root, "skills", "foo");
+      mkdirSync(dir);
+      writeFileSync(
+        join(dir, "SKILL.md"),
+        "---\nname: foo\ndescription: triggers on foo\nreads:\n  - vault: Blog/_daily/*.md\nwrites: []\nforbids: []\ndomain: personal\nclassification: read\n---\n",
+      );
+      const issue = validateSkill(dir);
+      expect(issue.status).toBe("pass");
+      expect(issue.reasons).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  });
+
+  test("pass with file: absolute path in forbids for cross-vault deny", () => {
+    const root = setupStack();
+    try {
+      const dir = join(root, "skills", "foo");
+      mkdirSync(dir);
+      writeFileSync(
+        join(dir, "SKILL.md"),
+        "---\nname: foo\ndescription: triggers on foo\nreads: []\nwrites: []\nforbids:\n  - file: /Users/panda/site/knowledge/work-vault/**\ndomain: personal\nclassification: hybrid\n---\n",
+      );
+      const issue = validateSkill(dir);
+      expect(issue.status).toBe("pass");
+      expect(issue.reasons).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  });
+
+  test("warn when vault: entry uses absolute path (user should use file: instead)", () => {
+    const root = setupStack();
+    try {
+      const dir = join(root, "skills", "foo");
+      mkdirSync(dir);
+      writeFileSync(
+        join(dir, "SKILL.md"),
+        "---\nname: foo\ndescription: triggers on foo\nreads:\n  - vault: /Users/panda/site/knowledge/obsidian-vault/foo.md\nwrites: []\nforbids: []\ndomain: personal\nclassification: read\n---\n",
+      );
+      const issue = validateSkill(dir);
+      expect(issue.status).toBe("warn");
+      expect(issue.reasons.some((r) => r.includes("absolute path"))).toBe(true);
+    } finally {
+      rmSync(root, { recursive: true });
+    }
+  });
+});
+
 describe("validateStack", () => {
   test("scans direct skills/ layout", () => {
     const root = setupStack();

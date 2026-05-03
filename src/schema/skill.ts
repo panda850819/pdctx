@@ -4,6 +4,8 @@ export type SkillClassification = "read" | "write" | "exec" | "hybrid";
 export interface SkillFrontmatter {
   name?: string;
   description?: string;
+  // Each entry uses "<source>: <target>" format. vault: resolves against
+  // the primary vault root only; use file: with absolute paths for other vaults.
   reads?: string[];
   writes?: string[];
   forbids?: string[];
