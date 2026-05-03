@@ -5,6 +5,8 @@ export interface CallOptions {
   runtime?: "claude" | "codex";
   model?: string;
   timeout?: number;
+  cwd?: string;
+  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
 }
 
 export async function runCall(
@@ -35,6 +37,8 @@ export async function runCall(
     runtime,
     model: opts.model,
     timeout_ms: (opts.timeout ?? 300) * 1000,
+    cwd: opts.cwd,
+    sandbox: opts.sandbox,
     onStream: (chunk) => process.stdout.write(chunk),
   });
 

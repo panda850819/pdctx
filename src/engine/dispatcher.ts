@@ -20,6 +20,10 @@ export interface DispatchOptions {
   model?: string;
   timeout_ms?: number;
   onStream?: (chunk: string) => void;
+  /** Working dir for the spawned runtime. Codex passes via `--cd`; claude via spawn cwd. Default: process.cwd(). */
+  cwd?: string;
+  /** Codex sandbox mode. Defaults to `workspace-write` so the agent can edit files in `cwd`. */
+  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
 }
 
 const STATE_DIR = join(homedir(), ".pdctx", "state");
@@ -82,14 +86,16 @@ export async function dispatch(
   });
 
   // Build command
+  const cwd = opts?.cwd ?? process.cwd();
+  const sandbox = opts?.sandbox ?? "workspace-write";
   let cmd: string[];
   if (runtime === "claude") {
     cmd = ["claude", "-p", prompt, "--model", model];
   } else {
-    // codex exec <PROMPT> -m <model>; model "default" means omit -m flag
-    cmd = model === "default"
-      ? ["codex", "exec", prompt]
-      : ["codex", "exec", prompt, "-m", model];
+    // codex exec [--cd <dir>] [--sandbox <mode>] [-m <model>] <PROMPT>
+    cmd = ["codex", "exec", "--cd", cwd, "--sandbox", sandbox];
+    if (model !== "default") cmd.push("-m", model);
+    cmd.push(prompt);
   }
 
   const startTime = Date.now();
@@ -98,6 +104,7 @@ export async function dispatch(
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
+    cwd,
   });
 
   const timer = setTimeout(() => {

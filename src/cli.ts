@@ -30,10 +30,14 @@ program
   .option("--runtime <runtime>", "claude or codex", "claude")
   .option("--model <model>", "model id (default: haiku for claude, default for codex)")
   .option("--timeout <seconds>", "timeout in seconds", "300")
+  .option("--cwd <dir>", "working dir for the spawned runtime (codex --cd, claude spawn cwd). Default: current shell cwd.")
+  .option("--sandbox <mode>", "codex sandbox: read-only | workspace-write | danger-full-access", "workspace-write")
   .action((context, task, opts) => runCall(context, task, {
     runtime: opts.runtime,
     model: opts.model,
     timeout: parseInt(opts.timeout, 10),
+    cwd: opts.cwd,
+    sandbox: opts.sandbox,
   }));
 
 program
