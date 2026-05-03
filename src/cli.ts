@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
+import pkg from "../package.json" with { type: "json" };
 import { runUse } from "./commands/use.ts";
 import { runSwitch } from "./commands/switch.ts";
 import { runCall } from "./commands/call.ts";
@@ -18,7 +19,7 @@ const program = new Command();
 program
   .name("pdctx")
   .description("Personal context-aware AI operator OS — declare contexts once, AI runtimes follow.")
-  .version("0.0.9");
+  .version(pkg.version);
 
 program
   .command("use [context]")
