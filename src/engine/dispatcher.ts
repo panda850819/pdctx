@@ -24,6 +24,15 @@ export interface DispatchOptions {
   cwd?: string;
   /** Codex sandbox mode. Defaults to `workspace-write` so the agent can edit files in `cwd`. */
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  /**
+   * Grant network access to the spawned runtime. Required for tasks that
+   * query gbrain Postgres / Ollama / external APIs. For codex with
+   * workspace-write sandbox, translates to
+   * `-c sandbox_workspace_write.network_access=true`. No-op for claude
+   * (claude doesn't sandbox network) or for `danger-full-access` (already
+   * unrestricted).
+   */
+  allowNetwork?: boolean;
 }
 
 const STATE_DIR = join(homedir(), ".pdctx", "state");
@@ -88,12 +97,18 @@ export async function dispatch(
   // Build command
   const cwd = opts?.cwd ?? process.cwd();
   const sandbox = opts?.sandbox ?? "workspace-write";
+  const allowNetwork = opts?.allowNetwork ?? false;
   let cmd: string[];
   if (runtime === "claude") {
     cmd = ["claude", "-p", prompt, "--model", model];
   } else {
-    // codex exec [--cd <dir>] [--sandbox <mode>] [-m <model>] <PROMPT>
+    // codex exec [--cd <dir>] [--sandbox <mode>] [-c <override>] [-m <model>] <PROMPT>
     cmd = ["codex", "exec", "--cd", cwd, "--sandbox", sandbox];
+    // workspace-write sandbox blocks network by default; opt-in via config
+    // override so codex can reach gbrain Postgres, Ollama, etc.
+    if (allowNetwork && sandbox === "workspace-write") {
+      cmd.push("-c", "sandbox_workspace_write.network_access=true");
+    }
     if (model !== "default") cmd.push("-m", model);
     cmd.push(prompt);
   }

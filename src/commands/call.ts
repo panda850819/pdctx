@@ -7,6 +7,7 @@ export interface CallOptions {
   timeout?: number;
   cwd?: string;
   sandbox?: "read-only" | "workspace-write" | "danger-full-access";
+  allowNetwork?: boolean;
 }
 
 export async function runCall(
@@ -39,6 +40,7 @@ export async function runCall(
     timeout_ms: (opts.timeout ?? 300) * 1000,
     cwd: opts.cwd,
     sandbox: opts.sandbox,
+    allowNetwork: opts.allowNetwork,
     onStream: (chunk) => process.stdout.write(chunk),
   });
 

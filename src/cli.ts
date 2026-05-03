@@ -39,12 +39,14 @@ program
   .option("--timeout <seconds>", "timeout in seconds", "300")
   .option("--cwd <dir>", "working dir for the spawned runtime (codex --cd, claude spawn cwd). Default: current shell cwd.")
   .option("--sandbox <mode>", "codex sandbox: read-only | workspace-write | danger-full-access", "workspace-write")
+  .option("--allow-network", "grant network access to spawned codex (needed for gbrain / Ollama / external APIs). No-op for claude or danger-full-access sandbox.", false)
   .action((context, task, opts) => runCall(context, task, {
     runtime: opts.runtime,
     model: opts.model,
     timeout: parseInt(opts.timeout, 10),
     cwd: opts.cwd,
     sandbox: opts.sandbox,
+    allowNetwork: opts.allowNetwork,
   }));
 
 program
