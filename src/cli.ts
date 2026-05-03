@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { Command } from "commander";
 import { runUse } from "./commands/use.ts";
+import { runSwitch } from "./commands/switch.ts";
 import { runCall } from "./commands/call.ts";
 import { runStatus } from "./commands/status.ts";
 import { runDoctor } from "./commands/doctor.ts";
@@ -20,9 +21,15 @@ program
   .version("0.0.9");
 
 program
-  .command("use <context>")
+  .command("use [context]")
   .description("Wear a context. AI runtimes filter to this context's skills + memory + voice + sources.")
-  .action(runUse);
+  .option("--infer", "Infer context from current working directory", false)
+  .action((context, opts) => runUse(context, { infer: opts.infer }));
+
+program
+  .command("switch <fuzzy>")
+  .description("Fuzzy switch to a context by name segment.")
+  .action(runSwitch);
 
 program
   .command("call <context> <task>")

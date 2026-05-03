@@ -1,6 +1,6 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { getDefaultRegistry } from "../adapters/registry.ts";
 
 const PDCTX_HOME = join(homedir(), ".pdctx");
@@ -9,6 +9,31 @@ interface Check {
   name: string;
   status: "ok" | "warn" | "fail";
   detail: string;
+}
+
+export interface AliasState {
+  rcPath: string;
+  hasPd: boolean;
+  hasPds: boolean;
+}
+
+function shellRcPath(shell = process.env["SHELL"] ?? ""): string {
+  const name = basename(shell);
+  if (name === "bash") return join(homedir(), ".bashrc");
+  if (name === "fish") return join(homedir(), ".config", "fish", "config.fish");
+  return join(homedir(), ".zshrc");
+}
+
+export function inspectAliasState(rcPath = shellRcPath()): AliasState {
+  if (!existsSync(rcPath)) {
+    return { rcPath, hasPd: false, hasPds: false };
+  }
+  const content = readFileSync(rcPath, "utf8");
+  return {
+    rcPath,
+    hasPd: /^\s*alias\s+pd=/m.test(content),
+    hasPds: /^\s*alias\s+pds=/m.test(content),
+  };
 }
 
 export async function runDoctor(): Promise<void> {
@@ -70,6 +95,15 @@ export async function runDoctor(): Promise<void> {
   const failed = checks.filter((c) => c.status === "fail").length;
   if (failed > 0) {
     process.exitCode = 1;
+  }
+
+  const aliases = inspectAliasState();
+  console.log("\nShell aliases:");
+  if (aliases.hasPd && aliases.hasPds) {
+    console.log("✓ pd / pds aliases configured");
+  } else {
+    console.log(`! pd / pds aliases missing in ${aliases.rcPath}`);
+    console.log("Suggested: alias pd='pdctx use' && alias pds='pdctx switch'  >> ~/.zshrc");
   }
 }
 
